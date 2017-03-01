@@ -1,0 +1,17 @@
+\frametitle{引入工厂}
+\begin{c++}
+  template <typename T>
+  Matcher<T> ignoring_case_equals(const T& expected) {
+    return ignoring_case<T>(equals_to<T>)(expected);
+  }
+
+  StringMatcher ignoring_case_starts(const string& expected) {
+    return ignoring_case<string>(starts)(expected);
+  }
+
+  StringMatcher ignoring_case_ends(const string& expected) {
+    return ignoring_case<string>(ends)(expected);
+  }
+
+  exists(names.begin(), names.end(), ignoring_case_starts("liu"));
+  \end{c++}

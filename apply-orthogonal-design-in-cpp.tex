@@ -1,0 +1,26 @@
+\documentclass[xcolor=svgnames, 11pt]{beamer}
+
+\graphicspath{{figures/}}
+
+\input{setup/format.tex}
+\input{setup/beamerformat.tex}
+\input{setup/commands.tex}
+
+\input{content/title.tex}
+
+\begin{document}
+
+\begin{frame}
+  \titlepage
+\end{frame}
+
+\begin{frame}{内容}
+  \tableofcontents[hideallsubsections]
+\end{frame}
+
+\input{content/introduction.tex}
+\input{content/oo-design.tex}
+\input{content/fp-design.tex}
+\input{content/reference.tex}
+
+\end{document}

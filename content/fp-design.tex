@@ -1,0 +1,215 @@
+\section{函数式设计}
+\label{sec:fpdesign}
+
+\begin{frame}
+  \begin{center}
+    \Huge{\textcolor{red}{函数式设计}}
+  \end{center}
+\end{frame}
+
+\subsection{引入函数}
+
+\begin{frame}[fragile]{函数式接口}
+ \begin{block}{函数类型}
+  \begin{c++}
+#include <functional>
+
+template <typename T>
+using Matcher = function<bool(const T&)>;
+
+using CharMatcher   = Matcher<char>;
+using StringMatcher = Matcher<string>;
+  \end{c++}
+ \end{block}
+\end{frame}
+
+\subsection{原子}
+
+\begin{frame}[fragile]{原子匹配器}
+  \begin{c++}
+  CharMatcher is_digit() {
+    return [](auto c) { 
+      return std::isdigit(c); 
+    };
+  }
+
+  CharMatcher is_upper() {
+    return [](auto c) { 
+      return std::isupper(c); 
+    };
+  }
+
+  exists(word.begin(), word.end(), is_digit());
+  exists(word.begin(), word.end(), is_upper());
+  \end{c++}
+\end{frame}  
+
+\begin{frame}[fragile]{占位符}
+  \begin{c++}
+  template <typename T>
+  Matcher<T> always() {
+    return [](auto) {
+      return true;
+    };
+  }
+
+  template <typename T>
+  Matcher<T> never() {
+    return [](auto) {
+      return false;
+    };
+  }
+
+  forall(word.begin(), word.end(), always<char>());  
+  \end{c++}
+\end{frame}
+
+\begin{frame}[fragile]{逻辑相等性}
+  \begin{c++}
+  template <typename T>
+  Matcher<T> equals_to(const T& expected) {
+    return [=](const T& actual) {
+      return expected == actual;
+    };
+  }
+
+  exists(word.begin(), word.end(), equals_to('_'));
+  \end{c++}
+\end{frame}
+
+\begin{frame}[fragile]{语法糖}
+  \begin{c++}
+  Matcher<std::string> is_empty() {
+    return equals_to<std::string>("");
+  }
+
+  Matcher<const void*> is_nil() {
+    return equals_to<const void*>(nullptr);
+  }
+
+  exists(names.begin(), names.end(), is_empty());
+  \end{c++}
+\end{frame}
+
+\subsection{组合}
+
+\begin{frame}[fragile]{组合或}
+  \begin{c++}
+  template <typename T>
+  Matcher<T> is_or(Matcher<T> left, Matcher<T> right) {
+    return [=](const T& actual) {
+      return left(actual) || right(actual);
+    };
+  }
+
+  exists(word.begin(), word.end(), is_or(
+    equals_to('_'), equals_to('*')
+  ));
+  \end{c++}
+\end{frame}
+
+\begin{frame}[fragile]{组合与}
+  \begin{c++}
+  template <typename T>
+  Matcher<T> is_and(Matcher<T> left, Matcher<T> right) {
+    return [=](const T& actual) {
+      return left(actual) && right(actual);
+    };
+  }
+
+  exists(word.begin(), word.end(), is_and(
+    is_space(), is_not(equals_to(' '))
+  ));
+  \end{c++}
+\end{frame}
+
+\subsection{修饰}
+
+\begin{frame}[fragile]{修饰器}
+  \begin{c++}
+  template <typename T>
+  Matcher<T> is_not(Matcher<T> matcher) {
+    return [=](const T& actual) {
+      return !matcher(actual);
+    };
+  }
+
+  forall(word.begin(), word.end(), is_not(equals_to('_')));
+  \end{c++}
+\end{frame}
+
+\begin{frame}[fragile]{语法糖}
+  \begin{c++}
+  template <typename T>
+  Matcher<T> is_not(const T& expected) {
+    return is_not<T>(equals_to(expected));
+  }
+
+  forall(word.begin(), word.end(), is_not('_'));
+  \end{c++}
+\end{frame}
+
+\subsection{特化}
+
+\begin{frame}[fragile]{字符串匹配器: starts}
+  \begin{c++}
+  StringMatcher starts(const std::string& prefix) {
+    return [=](const std::string& str) {
+      return str.length() >= prefix.length() &&
+        str.compare(0, prefix.length(), prefix) == 0;
+    };
+  }
+
+  exists(names.begin(), names.end(), starts("bob"));
+  \end{c++}
+\end{frame}
+
+\begin{frame}[fragile]{字符串匹配器: ends}
+  \begin{c++}
+  StringMatcher ends(const std::string& postfix) {
+    return [=](const std::string& str) {
+      return str.length() >= postfix.length() &&
+        str.compare(str.length() - postfix.length(), 
+          postfix.length(), postfix) == 0;
+    };
+  }
+
+  exists(names.begin(), names.end(), ends("bob"));  
+  \end{c++}
+\end{frame}
+
+\begin{frame}[fragile]{组合器}
+  \begin{c++}
+template <typename T>
+using MatcherFactory = function<Matcher<T>(const T&)>;
+
+template <typename T>
+MatcherFactory<T> ignoring_case(MatcherFactory<T> factory) {
+  return [=](const T& expected) {
+    auto matcher = factory(toLower(expected));
+    return [matcher](const T& actual) {
+      return matcher(toLower(actual));
+    };
+  };
+}
+  \end{c++}
+\end{frame}
+
+\begin{frame}[fragile]{引入工厂}
+  \begin{c++}
+  template <typename T>
+  Matcher<T> ignoring_case_equals(const T& expected) {
+    return ignoring_case<T>(equals_to<T>)(expected);
+  }
+
+  StringMatcher ignoring_case_starts(const string& expected) {
+    return ignoring_case<string>(starts)(expected);
+  }
+
+  StringMatcher ignoring_case_ends(const string& expected) {
+    return ignoring_case<string>(ends)(expected);
+  }
+
+  exists(names.begin(), names.end(), ignoring_case_starts("liu"));
+  \end{c++}
+\end{frame}
